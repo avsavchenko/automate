@@ -35,9 +35,12 @@ fi
 #
 # User Settings (TODO: read values from user)
 #
-DEV_DRBD=/dev/xvdb
-DEV_CONFIG=/dev/xvdc
-DEV_ISCSI=/dev/xvde
+echo "DRBD Meta Device (eg. /dev/xvdb)"
+read DEV_DRBD
+echo "iSCSI Config Device (eg. /dev/xvdc)"
+read DEV_CONFIG
+echo "iSCSI LUN Device (eg. /dev/xvde)"
+read DEV_ISCSI
 
 LOCAL_FQDN=`hostname --fqdn`
 LOCAL_HOST=`hostname`
