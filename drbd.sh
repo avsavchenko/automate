@@ -126,8 +126,8 @@ echo "$SECONDARY_LAN	$SECONDARY_FQDN	${SECONDARY_HOST}" >> /etc/hosts
 #
 # Install some packages
 #
-apt-get update
-apt-get install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms jfsutils
+apt-get -y update
+apt-get -y install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms jfsutils
 
 #
 # Configure DRBD
