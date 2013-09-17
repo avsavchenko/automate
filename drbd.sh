@@ -62,12 +62,15 @@ then
 	echo 
 
 	echo "FQDN of Secondary node"
-	read SECONDARY_FQDN
+	#read SECONDARY_FQDN
+	SECONDARY_FQDN="secondary.test.local"
 	SECONDARY_HOST="${SECONDARY_FQDN%%.*}"
 	echo "Secondary node LAN address (managment, iscsi)"
-	read SECONDARY_LAN
+	#read SECONDARY_LAN
+	SECONDARY_LAN="192.168.2.114"
 	echo "Secondary node SAN address (replication, heartbeat)"
-	read SECONDARY_SAN
+	#read SECONDARY_SAN
+	SECONDARY_SAN="10.10.10.2"
 else
 	echo "Secondary Node (localhost) info:"
 	echo "	$PRIMARY_FQDN"
@@ -92,7 +95,8 @@ else
 fi 
 
 echo "What is the Virtual IP of the iSCSI target?"
-read VIRTUAL_LAN
+#read VIRTUAL_LAN
+VIRTUAL_LAN="192.168.2.46"
 
 
 #
@@ -108,28 +112,30 @@ PART_ISCSI="$DEV_ISCSI"1
 # Three paritions are required:  one for the DRBD metadata,
 # one for config files, and one for the iSCSI target
 #
-dd if=/dev/zero of=$DEV_DRBD
-dd if=/dev/zero of=$DEV_CONFIG
-dd if=/dev/zero of=$DEV_ISCSI
-(echo n; echo p; echo 1; echo; echo; echo w) | fdisk $DEV_DRBD
-(echo n; echo p; echo 1; echo; echo; echo w) | fdisk $DEV_CONFIG
-(echo n; echo p; echo 1; echo; echo; echo w) | fdisk $DEV_ISCSI
+echo "Partioning."
+for disk in $DEV_DRBD $DEV_CONFIG $DEV_ISCSI
+do
+	dd if=/dev/zero of=$disk bs=512 count=1
+	(echo n; echo p; echo 1; echo; echo; echo w) | fdisk $disk
+done
 
 #
 # Configure Hosts
 #
+echo "Updating /etc/hosts"
 echo "$PRIMARY_LAN\t$PRIMARY_FQDN\t${PRIMARY_HOST}" >> /etc/hosts
 echo "$SECONDARY_LAN\t$SECONDARY_FQDN\t${SECONDARY_HOST}" >> /etc/hosts
 
 #
 # Install some packages
 #
-apt-get update
-apt-get install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms
+#apt-get update
+apt-get install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms jfsutils
 
 #
 # Configure DRBD
 #
+echo "Configuring DRBD"
 for file in /sbin/drbdsetup /sbin/drbdadm /sbin/drbdmeta
 do
 	chgrp haclient $file
@@ -140,7 +146,7 @@ done
 ### begin iscsi.res ###
 cat > /etc/drbd.d/iscsi.res << EOL
 resource iscsi.config {
-        protocol C;
+        protocol A;
  
         handlers {
         pri-on-incon-degr "echo o > /proc/sysrq-trigger ; halt -f";
@@ -188,7 +194,7 @@ resource iscsi.config {
 }
 
 resource iscsi.target.0 {
-        protocol C;
+        protocol A;
  
         handlers {
         pri-on-incon-degr "echo o > /proc/sysrq-trigger ; halt -f";
@@ -240,9 +246,12 @@ EOL
 #
 # Initialize DRBD 
 #
+echo "Initializing DRBD disks"
 drbdadm create-md all
-service drbd restart
-if $IS_PRIMARY ; then
+### removed for debugging service drbd restart
+if [ "$IS_PRIMARY" == "true" ]
+then
+	echo "Configuring primary node"
 	drbdadm -- --overwrite-data-of-peer primary all
 	mkfs.jfs /dev/drbd0
 	mkdir -p /mnt/config
@@ -250,7 +259,7 @@ if $IS_PRIMARY ; then
 	mkdir -p /mnt/config/iet
 
 	### begin ietd.conf
-	echo > /mnt/config/iet/ietd.conf << EOL	
+	cat > /mnt/config/iet/ietd.conf << EOL	
 	Target $IQN 
         #IncomingUser geekshlby secret
         #OutgoingUser geekshlby password
@@ -272,11 +281,12 @@ if $IS_PRIMARY ; then
         HeaderDigest           CRC32C,None
         DataDigest             CRC32C,None
         Wthreads               8
-	EOL	
+EOL
 	### end ietd.conf
 
 	echo ALL ALL > /mnt/config/iet/initiators.allow	
 	echo ALL $VIRTUAL_LAN > /mnt/config/iet/targets.allow
+	umount /mnt/config
 fi
 
 #
@@ -290,27 +300,28 @@ ln -s /mnt/config/iet /etc/iet
 #
 # Setup heartbeat
 #
-mv /etc/heartbeat/ha.cf /etc/heartbeat/ha.orig
-cat > /etc/heartbeat/ha.orig << EOL
-	logfile /var/log/ha.log
-	logfacility local0
-	keepalive 2
-	deadtime 30
-	warntime 10
-	initdead 120
-	bcast eth0, eth1
-	auto_failback on
-	node $PRIMARY_HOST
-	node $SECONDARY_HOST
+cat > /etc/heartbeat/ha.cf << EOL
+logfile /var/log/ha.log
+logfacility local0
+keepalive 2
+deadtime 30
+warntime 10
+initdead 120
+bcast eth0, eth1
+auto_failback on
+node $PRIMARY_HOST
+node $SECONDARY_HOST
 EOL
+
 cat > /etc/heartbeat/authkeys << EOL
-	auth 3
-	3 md5 password
+auth 3
+3 md5 password
 EOL
 chmod 600 /etc/heartbeat/authkeys
+
 cat > /etc/heartbeat/haresources << EOL
-	$PRIMARY_HOST drbddisk::iscsi.config Filesystem::/dev/drbd0::/mnt/config::jfs
-	$PRIMARY_HOST IPAddr::$VIRTUAL_LAN/24/eth0 drbddisk::iscsi.target.0 iscsitarget
+$PRIMARY_HOST drbddisk::iscsi.config Filesystem::/dev/drbd0::/mnt/config::jfs
+$PRIMARY_HOST IPAddr::$VIRTUAL_LAN/24/eth0 drbddisk::iscsi.target.0 iscsitarget
 EOL
 
 echo "Configure other node and/or reboot this node now"
