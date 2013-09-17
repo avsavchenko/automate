@@ -1,5 +1,5 @@
 #!/bin/bash
-# Hardware assumptions
+# Assumptions:
 #	eth0 = management and iSCSI target interface
 #	eth1 = replication network, usually a direct link between nodes
 #	disks: 4; os, drbd meta data, iscsi config data, and iscsi LUN
@@ -11,23 +11,51 @@ DEV_DRBD=/dev/xvdb
 DEV_CONFIG=/dev/xvdc
 DEV_ISCSI=/dev/xvde
 
-PRIMARY_FQDN=primary.test.local
-PRIMARY_HOST="${PRIMARY_FQDN%%.*}"
-PRIMARY_LAN=192.168.7.1
-PRIMARY_SAN=10.10.10.1
+LOCAL_FQDN=`hostname --fqdn`
+LOCAL_HOST=`hostname`
+LOCAL_LAN=`ip addr show eth0 | grep "inet " | awk '{print $2}'
+LOCAL_SAN=`ip addr show eth1 | grep "inet " | awk '{print $2}'
 
-SECONDARY_FQDN=secondary.test.local
-SECONDARY_HOST="${SECONDARY_FQDN%%.*}"
-SECONDARY_LAN=192.168.7.2
-SECONDARY_SAN=10.10.10.2
+echo Is this Primary or Secondary node (1/2)?
+read primary
+if [ "$primary" == "1" ] then
+	IS_PRIMARY=true
+	PRIMARY_FQDN=$LOCAL_FQDN
+	PRIMARY_HOST=$LOCAL_HOST
+	PRIMARY_LAN=$LOCAL_LAN
+	PRIMARY_SAN=$LOCAL_SAN
 
-VIRTUAL_LAN=192.168.7.3
-IS_PRIMARY=true
-IQN=iqn.2013-09.com.ziptrek:iscsi.target.0
+	echo FQDN of Secondary node
+	read SECONDARY_FQDN
+	SECONDARY_HOST="${SECONDARY_FQDN%%.*}"
+	echo Secondary node LAN address (managment, iscsi)
+	read SECONDARY_LAN
+	echo Secondary node SAN address (replication, heartbeat)
+	read SECONDARY_SAN
+else
+	IS_PRIMARY=false
+	echo FQDN of Primary node
+	read PRIMARY_FQDN
+	PRIMARY_HOST="${PRIMARY_FQDN%%.*}"
+	echo Primary node LAN address (managment, iscsi)
+	read PRIMARY_LAN
+	echo Primary node SAN address (replication, heartbeat)
+	read PRIMARY_SAN
+
+	SECONDARY_FQDN=$LOCAL_FQDN
+	SECONDARY_HOST=$LOCAL_HOST
+	SECONDARY_LAN=$LOCAL_LAN
+	SECONDARY_SAN=$LOCAL_SAN
+fi 
+
+echo What is the Virtual IP of the iSCSI target?
+read VIRTUAL_LAN
+
 
 #
 # Advanced Users Settings (don't need to modify in most situations)
 #
+IQN=iqn.2013-09.com.ziptrek:iscsi.target.0
 PART_DRBD="$DEV_DRBD"1
 PART_CONFIG="$DEV_CONFIG"1
 PART_ISCSI="$DEV_ISCSI"1
