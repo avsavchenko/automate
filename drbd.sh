@@ -5,6 +5,34 @@
 #	disks: 4; os, drbd meta data, iscsi config data, and iscsi LUN
 
 #
+# check for permissions
+#
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root/sudo user"
+	exit 1
+fi 
+
+#
+# check number of interfaces
+#
+IF_COUNT=`wc -w <<<$(netstat -i | cut -d" " -f1 | egrep -v "^Kernel|Iface|lo")`
+if [ "$IF_COUNT" -lt 2 ]
+then
+	echo "This node needs at least two network intefaces."
+	exit -1
+fi
+
+#
+# check number of disks
+#
+DISK_COUNT=`fdisk -l | grep "^Disk /dev" | wc -l`
+if [ "$DISK_COUNT" -lt 4 ]
+then
+	echo "This node needs at least 4 disks/logical volumes."  
+	exit -1
+fi
+
+#
 # User Settings (TODO: read values from user)
 #
 DEV_DRBD=/dev/xvdb
@@ -13,33 +41,48 @@ DEV_ISCSI=/dev/xvde
 
 LOCAL_FQDN=`hostname --fqdn`
 LOCAL_HOST=`hostname`
-LOCAL_LAN=`ip addr show eth0 | grep "inet " | awk '{print $2}'
-LOCAL_SAN=`ip addr show eth1 | grep "inet " | awk '{print $2}'
+LOCAL_LAN=`ip addr show eth0 | grep "inet " | awk '{print $2}' | sed 's/\/.*//'`
+LOCAL_SAN=`ip addr show eth1 | grep "inet " | awk '{print $2}' | sed 's/\/.*//'`
 
-echo Is this Primary or Secondary node (1/2)?
+echo "Is this Primary or Secondary node (1/2)?"
 read primary
-if [ "$primary" == "1" ] then
+if [ "$primary" == "1" ] 
+then
 	IS_PRIMARY=true
 	PRIMARY_FQDN=$LOCAL_FQDN
 	PRIMARY_HOST=$LOCAL_HOST
 	PRIMARY_LAN=$LOCAL_LAN
 	PRIMARY_SAN=$LOCAL_SAN
+	
+	echo "Primary Node (localhost) info:"
+	echo "	$PRIMARY_FQDN"
+	echo "	$PRIMARY_HOST"
+	echo "	$PRIMARY_LAN"
+	echo "	$PRIMARY_SAN"
+	echo 
 
-	echo FQDN of Secondary node
+	echo "FQDN of Secondary node"
 	read SECONDARY_FQDN
 	SECONDARY_HOST="${SECONDARY_FQDN%%.*}"
-	echo Secondary node LAN address (managment, iscsi)
+	echo "Secondary node LAN address (managment, iscsi)"
 	read SECONDARY_LAN
-	echo Secondary node SAN address (replication, heartbeat)
+	echo "Secondary node SAN address (replication, heartbeat)"
 	read SECONDARY_SAN
 else
+	echo "Secondary Node (localhost) info:"
+	echo "	$PRIMARY_FQDN"
+	echo "	$PRIMARY_HOST"
+	echo "	$PRIMARY_LAN"
+	echo "	$PRIMARY_SAN"
+	echo
+
 	IS_PRIMARY=false
-	echo FQDN of Primary node
+	echo "FQDN of Primary node"
 	read PRIMARY_FQDN
 	PRIMARY_HOST="${PRIMARY_FQDN%%.*}"
-	echo Primary node LAN address (managment, iscsi)
+	echo "Primary node LAN address (managment, iscsi)"
 	read PRIMARY_LAN
-	echo Primary node SAN address (replication, heartbeat)
+	echo "Primary node SAN address (replication, heartbeat)"
 	read PRIMARY_SAN
 
 	SECONDARY_FQDN=$LOCAL_FQDN
@@ -48,7 +91,7 @@ else
 	SECONDARY_SAN=$LOCAL_SAN
 fi 
 
-echo What is the Virtual IP of the iSCSI target?
+echo "What is the Virtual IP of the iSCSI target?"
 read VIRTUAL_LAN
 
 
@@ -61,18 +104,13 @@ PART_CONFIG="$DEV_CONFIG"1
 PART_ISCSI="$DEV_ISCSI"1
 
 #
-# check for permissions
-#
-if [[ $EUID -ne 0 ]]; then
-	echo "This script must be run as root/sudo user"
-	exit 1
-fi 
-
-#
 # Partition.  
 # Three paritions are required:  one for the DRBD metadata,
 # one for config files, and one for the iSCSI target
 #
+dd if=/dev/zero of=$DEV_DRBD
+dd if=/dev/zero of=$DEV_CONFIG
+dd if=/dev/zero of=$DEV_ISCSI
 (echo n; echo p; echo 1; echo; echo; echo w) | fdisk $DEV_DRBD
 (echo n; echo p; echo 1; echo; echo; echo w) | fdisk $DEV_CONFIG
 (echo n; echo p; echo 1; echo; echo; echo w) | fdisk $DEV_ISCSI
@@ -92,7 +130,7 @@ apt-get install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms
 #
 # Configure DRBD
 #
-for file in /sbin/drbdsetup /sbin/drbdadmin /sbin/drbdmeta
+for file in /sbin/drbdsetup /sbin/drbdadm /sbin/drbdmeta
 do
 	chgrp haclient $file
 	chmod o-x $file
@@ -275,5 +313,5 @@ cat > /etc/heartbeat/haresources << EOL
 	$PRIMARY_HOST IPAddr::$VIRTUAL_LAN/24/eth0 drbddisk::iscsi.target.0 iscsitarget
 EOL
 
-echo Configure other node and/or reboot this node now
+echo "Configure other node and/or reboot this node now"
 exit 0
