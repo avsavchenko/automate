@@ -62,15 +62,12 @@ then
 	echo 
 
 	echo "FQDN of Secondary node"
-	#read SECONDARY_FQDN
-	SECONDARY_FQDN="secondary.test.local"
+	read SECONDARY_FQDN
 	SECONDARY_HOST="${SECONDARY_FQDN%%.*}"
 	echo "Secondary node LAN address (managment, iscsi)"
-	#read SECONDARY_LAN
-	SECONDARY_LAN="192.168.2.114"
+	read SECONDARY_LAN
 	echo "Secondary node SAN address (replication, heartbeat)"
-	#read SECONDARY_SAN
-	SECONDARY_SAN="10.10.10.2"
+	read SECONDARY_SAN
 else
 	SECONDARY_FQDN=$LOCAL_FQDN
 	SECONDARY_HOST=$LOCAL_HOST
@@ -131,7 +128,6 @@ echo "$SECONDARY_LAN	$SECONDARY_FQDN	${SECONDARY_HOST}" >> /etc/hosts
 #
 apt-get update
 apt-get install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms jfsutils
-modprobe drbd
 
 #
 # Configure DRBD
@@ -250,7 +246,7 @@ EOL
 echo "Initializing DRBD disks"
 mkdir -p /mnt/config
 drbdadm create-md all
-### removed for debugging service drbd restart
+service drbd restart
 if [ "$IS_PRIMARY" == "true" ]
 then
 	echo "Configuring primary node"
