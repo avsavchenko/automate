@@ -129,9 +129,8 @@ echo "$SECONDARY_LAN	$SECONDARY_FQDN	${SECONDARY_HOST}" >> /etc/hosts
 #
 # Install some packages
 #
-apt-get update
-apt-get install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms jfsutils
-modprobe drbd
+apt-get -y update
+apt-get -y install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms jfsutils
 
 #
 # Configure DRBD
@@ -250,7 +249,7 @@ EOL
 echo "Initializing DRBD disks"
 mkdir -p /mnt/config
 drbdadm create-md all
-### removed for debugging service drbd restart
+removed for debugging service drbd restart
 if [ "$IS_PRIMARY" == "true" ]
 then
 	echo "Configuring primary node"
