@@ -96,8 +96,7 @@ else
 fi 
 
 echo "What is the Virtual IP of the iSCSI target?"
-#read VIRTUAL_LAN
-VIRTUAL_LAN="192.168.2.46"
+read VIRTUAL_LAN
 
 
 #
@@ -130,8 +129,9 @@ echo "$SECONDARY_LAN	$SECONDARY_FQDN	${SECONDARY_HOST}" >> /etc/hosts
 #
 # Install some packages
 #
-#apt-get update
+apt-get update
 apt-get install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms jfsutils
+modprobe drbd
 
 #
 # Configure DRBD
