@@ -42,3 +42,4 @@ iface $IFNAME inet dhcp
 EOL
 
 fi
+ifup $IFNAME

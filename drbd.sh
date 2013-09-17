@@ -72,11 +72,16 @@ then
 	#read SECONDARY_SAN
 	SECONDARY_SAN="10.10.10.2"
 else
+	SECONDARY_FQDN=$LOCAL_FQDN
+	SECONDARY_HOST=$LOCAL_HOST
+	SECONDARY_LAN=$LOCAL_LAN
+	SECONDARY_SAN=$LOCAL_SAN
+
 	echo "Secondary Node (localhost) info:"
-	echo "	$PRIMARY_FQDN"
-	echo "	$PRIMARY_HOST"
-	echo "	$PRIMARY_LAN"
-	echo "	$PRIMARY_SAN"
+	echo "	$SECONDARY_FQDN"
+	echo "	$SECONDARY_HOST"
+	echo "	$SECONDARY_LAN"
+	echo "	$SECONDARY_SAN"
 	echo
 
 	IS_PRIMARY=false
@@ -88,10 +93,6 @@ else
 	echo "Primary node SAN address (replication, heartbeat)"
 	read PRIMARY_SAN
 
-	SECONDARY_FQDN=$LOCAL_FQDN
-	SECONDARY_HOST=$LOCAL_HOST
-	SECONDARY_LAN=$LOCAL_LAN
-	SECONDARY_SAN=$LOCAL_SAN
 fi 
 
 echo "What is the Virtual IP of the iSCSI target?"
@@ -102,7 +103,7 @@ VIRTUAL_LAN="192.168.2.46"
 #
 # Advanced Users Settings (don't need to modify in most situations)
 #
-IQN=iqn.2013-09.com.ziptrek:iscsi.target.0
+IQN=iqn.2013-09.com.ziptrek:iscsi.0.`date +%s`
 PART_DRBD="$DEV_DRBD"1
 PART_CONFIG="$DEV_CONFIG"1
 PART_ISCSI="$DEV_ISCSI"1
@@ -123,8 +124,8 @@ done
 # Configure Hosts
 #
 echo "Updating /etc/hosts"
-echo "$PRIMARY_LAN\t$PRIMARY_FQDN\t${PRIMARY_HOST}" >> /etc/hosts
-echo "$SECONDARY_LAN\t$SECONDARY_FQDN\t${SECONDARY_HOST}" >> /etc/hosts
+echo "$PRIMARY_LAN	$PRIMARY_FQDN	${PRIMARY_HOST}" >> /etc/hosts
+echo "$SECONDARY_LAN	$SECONDARY_FQDN	${SECONDARY_HOST}" >> /etc/hosts
 
 #
 # Install some packages
@@ -247,6 +248,7 @@ EOL
 # Initialize DRBD 
 #
 echo "Initializing DRBD disks"
+mkdir -p /mnt/config
 drbdadm create-md all
 ### removed for debugging service drbd restart
 if [ "$IS_PRIMARY" == "true" ]
@@ -254,7 +256,6 @@ then
 	echo "Configuring primary node"
 	drbdadm -- --overwrite-data-of-peer primary all
 	mkfs.jfs /dev/drbd0
-	mkdir -p /mnt/config
 	mount /dev/drbd0 /mnt/config
 	mkdir -p /mnt/config/iet
 
@@ -263,7 +264,7 @@ then
 	Target $IQN 
         #IncomingUser geekshlby secret
         #OutgoingUser geekshlby password
-        Lun 0 Path=$PART_ISCSI,Type=blockio
+        Lun 0 Path=/dev/drbd1,Type=blockio
         Alias disk0
         MaxConnections         1
         InitialR2T             Yes
@@ -321,7 +322,7 @@ chmod 600 /etc/heartbeat/authkeys
 
 cat > /etc/heartbeat/haresources << EOL
 $PRIMARY_HOST drbddisk::iscsi.config Filesystem::/dev/drbd0::/mnt/config::jfs
-$PRIMARY_HOST IPAddr::$VIRTUAL_LAN/24/eth0 drbddisk::iscsi.target.0 iscsitarget
+$PRIMARY_HOST IPaddr::$VIRTUAL_LAN/24/eth0 drbddisk::iscsi.target.0 iscsitarget
 EOL
 
 echo "Configure other node and/or reboot this node now"
