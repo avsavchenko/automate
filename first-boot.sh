@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -f /var/lock/first-boot ]
+if [ -f /var/run/lock/first-boot ]
 then
 	exit 0
 fi
@@ -13,7 +13,7 @@ then
 	apt-get -y upgrade
 fi
 
-git clone https://github.com/angryelectron/automate /tmp/automate
+(cd $HOME/automate; git pull)
 
 echo "Change hostname? (y/n)"
 read HOST
@@ -38,4 +38,4 @@ then
 	/tmp/automate/drbd.sh
 fi
 
-touch /var/lock/first-boot
+touch /var/run/lock/first-boot
