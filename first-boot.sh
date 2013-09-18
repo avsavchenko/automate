@@ -13,20 +13,18 @@ then
 	apt-get -y upgrade
 fi
 
-(cd $HOME/automate; git pull)
-
 echo "Change hostname? (y/n)"
 read HOST
 if [ "$HOST" == "y" ]
 then
-	$HOME/automate/hostname.sh
+	./hostname.sh
 fi
 
 echo "Configure network interface? (y/n)"
 read CONFIG
 while [ "$CONFIG" == "y" ]
 do
-	$HOME/automate/network.sh
+	./network.sh
 	echo "Configure another interface? (y/n)"
 	read CONFIG
 done
@@ -35,7 +33,7 @@ echo "Configure iSCSI target DRBD node? (y/n)"
 read NODE
 if [ "$NODE" == "y" ]
 then
-	$HOME/automate/drbd.sh
+	./drbd.sh
 fi
 
 touch /var/run/lock/first-boot
