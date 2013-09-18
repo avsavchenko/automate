@@ -19,14 +19,14 @@ echo "Change hostname? (y/n)"
 read HOST
 if [ "$HOST" == "y" ]
 then
-	/tmp/automate/hostname.sh
+	$HOME/automate/hostname.sh
 fi
 
 echo "Configure network interface? (y/n)"
 read CONFIG
 while [ "$CONFIG" == "y" ]
 do
-	/tmp/automate/network.sh
+	$HOME/automate/network.sh
 	echo "Configure another interface? (y/n)"
 	read CONFIG
 done
@@ -35,7 +35,10 @@ echo "Configure iSCSI target DRBD node? (y/n)"
 read NODE
 if [ "$NODE" == "y" ]
 then
-	/tmp/automate/drbd.sh
+	$HOME/automate/drbd.sh
 fi
 
 touch /var/run/lock/first-boot
+
+echo "You can find this script at $HOME/automate/first-boot.sh, if you need to"
+echo "run it again.  Remove /var/run/lock/first-boot to re-enable."
