@@ -1,5 +1,7 @@
 #!/bin/bash
 # Assumptions:
+#	eth0 = management and iSCSI target interface
+#	eth1 = replication network, usually a direct link between nodes
 #	disks: 4; os, drbd meta data, iscsi config data, and iscsi LUN
 
 #
@@ -9,6 +11,16 @@ if [[ $EUID -ne 0 ]]; then
 	echo "This script must be run as root/sudo user"
 	exit 1
 fi 
+
+#
+# check number of interfaces
+#
+IF_COUNT=`wc -w <<<$(netstat -i | cut -d" " -f1 | egrep -v "^Kernel|Iface|lo")`
+if [ "$IF_COUNT" -lt 2 ]
+then
+	echo "This node needs at least two network intefaces."
+	exit -1
+fi
 
 #
 # check number of disks
@@ -110,15 +122,15 @@ done
 #
 # Configure Hosts
 #
-#echo "Updating /etc/hosts"
-#echo "$PRIMARY_LAN	$PRIMARY_FQDN	${PRIMARY_HOST}" >> /etc/hosts
-#echo "$SECONDARY_LAN	$SECONDARY_FQDN	${SECONDARY_HOST}" >> /etc/hosts
+echo "Updating /etc/hosts"
+echo "$PRIMARY_LAN	$PRIMARY_FQDN	${PRIMARY_HOST}" >> /etc/hosts
+echo "$SECONDARY_LAN	$SECONDARY_FQDN	${SECONDARY_HOST}" >> /etc/hosts
 
 #
 # Install some packages
 #
 apt-get -y update
-apt-get -y install ntp drbd8-utils iscsitarget iscsitarget-dkms jfsutils
+apt-get -y install ntp drbd8-utils heartbeat iscsitarget iscsitarget-dkms jfsutils
 
 #
 # Configure DRBD
@@ -285,3 +297,32 @@ update-rc.d -f iscsitarget remove
 mv /etc/iet /etc/iet.orig
 ln -s /mnt/config/iet /etc/iet
 
+#
+# Setup heartbeat
+#
+cat > /etc/heartbeat/ha.cf << EOL
+logfile /var/log/ha.log
+logfacility local0
+keepalive 2
+deadtime 30
+warntime 10
+initdead 120
+bcast eth0, eth1
+auto_failback on
+node $PRIMARY_HOST
+node $SECONDARY_HOST
+EOL
+
+cat > /etc/heartbeat/authkeys << EOL
+auth 3
+3 md5 password
+EOL
+chmod 600 /etc/heartbeat/authkeys
+
+cat > /etc/heartbeat/haresources << EOL
+$PRIMARY_HOST drbddisk::iscsi.config Filesystem::/dev/drbd0::/mnt/config::jfs
+$PRIMARY_HOST IPaddr::$VIRTUAL_LAN/24/eth0 drbddisk::iscsi.target.0 iscsitarget
+EOL
+
+echo "Configure other node and/or reboot this node now"
+exit 0
