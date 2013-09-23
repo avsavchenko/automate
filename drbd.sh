@@ -21,6 +21,16 @@ then
 fi
 
 #
+# check number of interfaces
+#
+IF_COUNT=`wc -w <<<$(netstat -i | cut -d" " -f1 | egrep -v "^Kernel|Iface|lo")`
+if [ "$IF_COUNT" -lt 2 ]
+then
+	echo "This node needs at least two network intefaces."
+	exit -1
+fi
+
+#
 # User Settings (TODO: read values from user)
 #
 echo "DRBD Meta Device (eg. /dev/xvdb)"
@@ -117,7 +127,6 @@ done
 #
 # Install some packages
 #
-apt-get -y update
 apt-get -y install ntp drbd8-utils iscsitarget iscsitarget-dkms jfsutils
 
 #
