@@ -10,6 +10,7 @@
 # Prerequisites:
 # 	* node has Ubuntu Server 12.04 installed 
 # 	* node has one unconfigured network interface
+	* node has one working network interface connected to the Internet
 # 	* node has 2 blank disks attached which do not contain the OS 
 # 	* disks are the same size on all nodes (For Now)
 # 
