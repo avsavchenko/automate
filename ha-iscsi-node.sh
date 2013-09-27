@@ -1,27 +1,27 @@
 #!/bin/bash
-This script will setup a clean Ubuntu 12.04 Server as one of two nodes in a
-high-availability, block-replicated, iSCSI target.  A useful resource that was
-the basis of this script can be found at
-http:/;/wiki.skytech.dk/images/4/44/Ha-iscsi.pdf
-
-WARNING: This script modifies disks and partition tables.  Use with caution! If
-in doubt, review the Disk Setup section below before proceeding.
-
-Prerequisites:
-	* node has Ubuntu Server 12.04 installed 
-	* node has one unconfigured network interface
-	* node has 2 blank disks attached which do not contain the OS 
-	* disks are the same size on all nodes (For Now)
-
-A single disk can be used if additional disks are unavailable, but the Disk 
-Setup section will have to be reviewed.  Modify the Cluster Config below, then
-run this script twice, once per node, adjusting the Node Config each time.
+# This script will setup a clean Ubuntu 12.04 Server as one of two nodes in a
+# high-availability, block-replicated, iSCSI target.  A useful resource that was
+# the basis of this script can be found at
+# http:/;/wiki.skytech.dk/images/4/44/Ha-iscsi.pdf
+# 
+# WARNING: This script modifies disks and partition tables - Use with caution! 
+# If in doubt, review the Disk Setup section below before proceeding.
+# 
+# Prerequisites:
+# 	* node has Ubuntu Server 12.04 installed 
+# 	* node has one unconfigured network interface
+# 	* node has 2 blank disks attached which do not contain the OS 
+# 	* disks are the same size on all nodes (For Now)
+# 
+# A single disk can be used if additional disks are unavailable, but the Disk 
+# Setup section will have to be reviewed.  Modify the Cluster Config below, then
+# run this script twice, once per node, adjusting the Node Config each time.
 
 #
 # User Config - Update this for each Node 
 #
-NODENAME="sr-node2"
-NODE_IP="10.0.0.2"
+NODENAME="sr-node1"
+NODE_IP="10.0.0.1"
 
 #
 # Cluster Config - must be the same on all nodes in the Cluster
