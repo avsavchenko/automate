@@ -9,8 +9,8 @@
 # 
 # Prerequisites:
 # 	* node has Ubuntu Server 12.04 installed 
+#	* node has one working network interface connected to the Internet
 # 	* node has one unconfigured network interface
-	* node has one working network interface connected to the Internet
 # 	* node has 2 blank disks attached which do not contain the OS 
 # 	* disks are the same size on all nodes (For Now)
 # 
@@ -39,6 +39,48 @@ META_DEV="/dev/xvdb1"
 LUN_DEV="/dev/xvdc1"
 IQN="iqn.2013-09.com.ziptrek:sr.lun.1" 
 
+#
+# Make sure user is root
+#
+if [[ $EUID -ne 0 ]]; then
+  echo "Must run as root/sudo user."
+  exit -1
+fi 
+
+
+if [ "$1" == "configure" ]; then
+  #
+  # Both nodes need to be online before configuring pacemaker,
+  # so only run this once everything else has been installed
+  #
+  crm configure property stonith-enabled="false"
+  crm configure property no-quorum-policy="ignore"
+  crm configure property default-resource-stickiness="200"
+  crm configure primitive p_drbd_lun1 ocf:linbit:drbd \
+    params drbd_resource="$DRBD_RESOURCE" op monitor interval="29s" \
+    role="Master" op monitor interval="31s" role="Slave"
+  crm configure primitive p_iscsi_ip ocf:heartbeat:IPaddr \
+    params ip="$ISCSI_IP" op monitor interval="10s"
+  crm configure primitive p_iscsi_lun1 ocf:heartbeat:iSCSILogicalUnit \
+    params target_iqn="$IQN" lun="1" path="$DRBD_DEVICE" implementation="iet" \
+    op monitor interval="10s"
+  crm configure primitive p_iscsi_target ocf:heartbeat:iSCSITarget \
+    params iqn="$IQN" implementation="iet" tid="1" op monitor interval="10s"
+  crm configure group g_iscsi p_iscsi_target p_iscsi_lun1 p_iscsi_ip
+  crm configure ms ms_drbd_lun1 p_drbd_lun1 meta master-max="1" \
+    master-node-max="1" clone-max="2" clone-node-max="1" notify="true"
+  crm configure colocation c_iscsi inf: g_iscsi ms_drbd_lun1:Master
+  crm configure location l_iscsi_prefer_primary g_iscsi 50: $PRIMARY_NODENAME 
+  exit $?
+
+elif [ $# -eq 0 -o "$1" != "install" ]; then
+  #
+  # Check other command-line arguments
+  #
+  echo "usage: $0 [install | configure]"
+  exit -1
+fi 
+
 
 #
 # Network Setup
@@ -58,8 +100,8 @@ netmask 255.255.255.0
 EOL
 
 ifup $IF
-printf "\n10.0.0.1\t$PRIMARY_NODENAME\n" >> /etc/hosts
-printf "10.0.0.2\t$SECONDARY_NODENAME\n" >> /etc/hosts
+printf "\n$PRIMARY_IP\t$PRIMARY_NODENAME\n" >> /etc/hosts
+printf "$SECONDARY_IP\t$SECONDARY_NODENAME\n" >> /etc/hosts
 
 
 #
@@ -76,6 +118,7 @@ dd if=/dev/zero of=${LUN_DEV:0:-1} bs=512 count=1
 #
 # DRBD Setup
 #
+apt-get -y update
 apt-get -y install ntp drbd8-utils
 cat > /etc/drbd.d/$DRBD_RESOURCE.res << EOL
 resource $DRBD_RESOURCE {
@@ -117,9 +160,10 @@ if [ "$NODE_IP" == "$PRIMARY_IP" ]; then
 fi
 
 #
-# iSCSI - all of the config is controlled by Pacemaker, but the daemon must be running 
+# iSCSI - all of the config is controlled by Pacemaker, but the daemon must be
+# running 
 #
-apt-get -y install iscsitarget iscsitarget-dkms
+apt-get -y install iscsitarget iscsitarget-dkms 
 sed -i "s/^ISCSITARGET_ENABLE.*/ISCSITARGET_ENABLE=true/" /etc/default/iscsitarget
 service iscsitarget start
 
@@ -156,16 +200,7 @@ EOL
 echo "CMAN_QUORUM_TIMEOUT=0" >> /etc/default/cman
 service cman start
 service pacemaker start
-if [ "$NODE_IP" == "$PRIMARY_IP" ]; then
-	crm configure property stonith-enabled="false"
-	crm configure property no-quorum-policy="ignore"
-	crm configure property default-resource-stickiness="200"
-	crm configure primitive p_drbd_lun1 ocf:linbit:drbd params drbd_resource="$DRBD_RESOURCE" op monitor interval="29s" role="Master" op monitor interval="31s" role="Slave"
- 	crm configure primitive p_iscsi_ip ocf:heartbeat:IPaddr params ip="$ISCSI_IP" op monitor interval="10s"
- 	crm configure primitive p_iscsi_lun1 ocf:heartbeat:iSCSILogicalUnit params target_iqn="$IQN" lun="1" path="$DRBD_DEVICE" implementation="iet" op monitor interval="10s"
- 	crm configure primitive p_iscsi_target ocf:heartbeat:iSCSITarget params iqn="$IQN" implementation="iet" tid="1" op monitor interval="10s"
- 	crm configure group g_iscsi p_iscsi_target p_iscsi_lun1 p_iscsi_ip
- 	crm configure ms ms_drbd_lun1 p_drbd_lun1 meta master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" notify="true"
- 	crm configure colocation c_iscsi inf: g_iscsi ms_drbd_lun1:Master
-	crm configure location l_iscsi_prefer_primary g_iscsi 50: $PRIMARY_NODENAME 
-fi
+crm show status
+
+echo "Once both nodes are online (check with 'crm show status'),"
+echo "complete the configuration by running '$0 configure'.
