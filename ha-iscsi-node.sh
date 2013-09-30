@@ -200,7 +200,7 @@ EOL
 echo "CMAN_QUORUM_TIMEOUT=0" >> /etc/default/cman
 service cman start
 service pacemaker start
-crm show status
+crm status
 
 echo "Once both nodes are online (check with 'crm show status'),"
-echo "complete the configuration by running '$0 configure'.
+echo "complete the configuration by running '$0 configure'."
