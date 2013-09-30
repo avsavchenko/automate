@@ -117,9 +117,11 @@ if [ "$NODE_IP" == "$PRIMARY_IP" ]; then
 fi
 
 #
-# iSCSI - all of the config is controlled by Pacemaker 
+# iSCSI - all of the config is controlled by Pacemaker, but the daemon must be running 
 #
 apt-get -y install iscsitarget iscsitarget-dkms
+sed -i "s/^ISCSITARGET_ENABLE.*/ISCSITARGET_ENABLE=true/" /etc/default/iscsitarget
+service iscsitarget start
 
 #
 # Pacemaker
@@ -159,10 +161,10 @@ if [ "$NODE_IP" == "$PRIMARY_IP" ]; then
 	crm configure property no-quorum-policy="ignore"
 	crm configure property default-resource-stickiness="200"
 	crm configure primitive p_drbd_lun1 ocf:linbit:drbd params drbd_resource="$DRBD_RESOURCE" op monitor interval="29s" role="Master" op monitor interval="31s" role="Slave"
- 	crm configure primitive p_ip_iscsi ocf:heartbeat:IPaddr params ip="$ISCSI_IP" op monitor interval="10s"
+ 	crm configure primitive p_iscsi_ip ocf:heartbeat:IPaddr params ip="$ISCSI_IP" op monitor interval="10s"
  	crm configure primitive p_iscsi_lun1 ocf:heartbeat:iSCSILogicalUnit params target_iqn="$IQN" lun="1" path="$DRBD_DEVICE" implementation="iet" op monitor interval="10s"
- 	crm configure primitive p_iscsi ocf:heartbeat:iSCSITarget params iqn="$IQN" implementation="iet" tid="1" op monitor interval="10s"
- 	crm configure group g_iscsi p_iscsi p_iscsi_lun1 p_ip_iscsi
+ 	crm configure primitive p_iscsi_target ocf:heartbeat:iSCSITarget params iqn="$IQN" implementation="iet" tid="1" op monitor interval="10s"
+ 	crm configure group g_iscsi p_iscsi_target p_iscsi_lun1 p_iscsi_ip
  	crm configure ms ms_drbd_lun1 p_drbd_lun1 meta master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" notify="true"
  	crm configure colocation c_iscsi inf: g_iscsi ms_drbd_lun1:Master
 	crm configure location l_iscsi_prefer_primary g_iscsi 50: $PRIMARY_NODENAME 
