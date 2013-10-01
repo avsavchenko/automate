@@ -53,6 +53,7 @@ if [ "$1" == "configure" ]; then
   # Both nodes need to be online before configuring pacemaker,
   # so only run this once everything else has been installed
   #
+  crm cib new blank #should you ever need a blank slate
   crm configure property stonith-enabled="false"
   crm configure property no-quorum-policy="ignore"
   crm configure property default-resource-stickiness="200"
@@ -72,6 +73,7 @@ if [ "$1" == "configure" ]; then
   crm configure ms ms_drbd_lun1 p_drbd_lun1 meta master-max="1" \
     master-node-max="1" clone-max="2" clone-node-max="1" notify="true"
   crm configure colocation c_iscsi inf: g_iscsi ms_drbd_lun1:Master
+  crm configure order o_iscsi inf: ms_drbd_lun1:promote g_iscsi:start
   crm configure location l_iscsi_prefer_primary g_iscsi 50: $PRIMARY_NODENAME 
   exit $?
 
