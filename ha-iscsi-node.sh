@@ -77,6 +77,7 @@ elif [ $# -eq 0 -o "$1" != "install" ]; then
   #
   # Check other command-line arguments
   #
+  echo "Have you configured the cluster by editing this script yet?"
   echo "usage: $0 [install | configure]"
   exit -1
 fi 
@@ -202,5 +203,5 @@ service cman start
 service pacemaker start
 crm status
 
-echo "Once both nodes are online (check with 'crm show status'),"
+echo "Once both nodes are online (check with 'sudo crm status'),"
 echo "complete the configuration by running '$0 configure'."
