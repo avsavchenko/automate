@@ -172,6 +172,7 @@ service iscsitarget start
 # Pacemaker
 #
 apt-get -y install pacemaker cman fence-agents
+update-rc.d pacemaker defaults
 cat > /etc/cluster/cluster.conf << EOL
 <?xml version="1.0"?>
 <cluster config_version="1" name="pacemaker1">
