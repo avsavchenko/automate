@@ -58,7 +58,9 @@ if [ "$1" == "configure" ]; then
   crm configure property default-resource-stickiness="200"
   crm configure primitive p_drbd_lun1 ocf:linbit:drbd \
     params drbd_resource="$DRBD_RESOURCE" op monitor interval="29s" \
-    role="Master" op monitor interval="31s" role="Slave"
+    role="Master" op monitor interval="31s" role="Slave" \
+    op start timeout="240s" \
+    op stop timeout="100s"
   crm configure primitive p_iscsi_ip ocf:heartbeat:IPaddr \
     params ip="$ISCSI_IP" op monitor interval="10s"
   crm configure primitive p_iscsi_lun1 ocf:heartbeat:iSCSILogicalUnit \
