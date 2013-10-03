@@ -23,6 +23,8 @@
 #
 NODENAME="sr-node1"
 NODE_IP="10.0.0.1"
+META_DEV="/dev/xvdb1"
+LUN_DEV="/dev/xvdc1"
 
 #
 # Cluster Config - must be the same on all nodes in the Cluster
@@ -35,8 +37,6 @@ SECONDARY_IP="10.0.0.2"
 ISCSI_IP="10.0.0.3"
 DRBD_RESOURCE="iscsi.lun.1"
 DRBD_DEVICE="/dev/drbd1"
-META_DEV="/dev/xvdb1"
-LUN_DEV="/dev/xvdc1"
 IQN="iqn.2013-09.com.ziptrek:sr.lun.1" 
 
 #
@@ -96,29 +96,36 @@ sed -i "s/$HOSTNAME/$NODENAME/g" /etc/hostname
 sed -i "s/$HOSTNAME/$NODENAME/g" /etc/hosts
 hostname $NODENAME
 
-cat >> /etc/network/interfaces << EOL
+### only configure the interface if it hasn't been setup
+cat /etc/network/interfaces | grep $IF
+if [ $? -eq 1 ]; then
+	cat >> /etc/network/interfaces << EOL
 
 auto $IF
 iface $IF inet static
 address $NODE_IP
 netmask 255.255.255.0
 EOL
+	ifup $IF
+fi
 
-ifup $IF
 printf "\n$PRIMARY_IP\t$PRIMARY_NODENAME\n" >> /etc/hosts
 printf "$SECONDARY_IP\t$SECONDARY_NODENAME\n" >> /etc/hosts
 
 
 #
-# Disk Setup - create a single Linux partition on each disk.  
+# Disk Setup - create a single Linux partition on each disk  
+# but only if not using LVM.
 # Your partition and/or disk scheme may differ.  
 # TODO: create 2nd partition if using the same disk.
 #
-
-dd if=/dev/zero of=${META_DEV:0:-1} bs=512 count=1
-dd if=/dev/zero of=${LUN_DEV:0:-1} bs=512 count=1
-(echo n; echo p; echo 1; echo; echo; echo w) | fdisk ${META_DEV:0:-1}
-(echo n; echo p; echo 1; echo; echo; echo w) | fdisk ${LUN_DEV:0:-1}
+lvscan | grep "$META_DEV"
+if [ $? -ne 0 ]; then
+	dd if=/dev/zero of=${META_DEV:0:-1} bs=512 count=1
+	dd if=/dev/zero of=${LUN_DEV:0:-1} bs=512 count=1
+	(echo n; echo p; echo 1; echo; echo; echo w) | fdisk ${META_DEV:0:-1}
+	(echo n; echo p; echo 1; echo; echo; echo w) | fdisk ${LUN_DEV:0:-1}
+fi
 
 #
 # DRBD Setup
