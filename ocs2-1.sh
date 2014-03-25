@@ -23,8 +23,9 @@ cpan -i XML::Entities
 ### Get and Install OCS Server 2.1 (accept all default values)
 wget https://launchpad.net/ocsinventory-server/stable-2.1/2.1/+download/OCSNG_UNIX_SERVER-2.1.tar.gz
 tar xvzf OCSNG_UNIX_SERVER-2.1.tar.gz
-./OCSNG_UNIX_SERVER-2.1/setup.sh
-
+cd OCSNG_UNIX_SERVER-2.1
+./setup.sh
+cd ..
 
 ### set reasonable limits
 sed -i "s/post_max_size.*/post_max_size = 201M/" /etc/php5/apache2/php.ini
