@@ -42,13 +42,15 @@ read -p "Once the config is complete, press Enter to continue."
 echo
 
 ### change DB password
-mv /usr/share/ocsinventory-reports/install.php /usr/share/ocsinventory-reports/install.php.orig
+mv /usr/share/ocsinventory-reports/ocsreports/install.php /usr/share/ocsinventory-reports/ocsreports/install.php.orig
 echo "Enter new password for mysql database 'ocsweb'."
 read MYSQLPASSWD
 echo "Enter root password for mysql."
 mysql -h localhost -u root -p mysql -e "SET PASSWORD FOR 'ocs'@'localhost' = PASSWORD('$MYSQLPASSWD');"
-sed -i "s/PSWD_BASE\",\"ocs/PSWD_BASE\",\"$MYSQLPASSWD/" /usr/share/ocsinventory-reports/dbconfig.inc.php
-sed -i "s/OCS_DB_PWD ocs/OCS_DB_PWD $MYSQLPASSWD/" /etc/ocsinventory/ocsinventory.conf
+sed -i "s/PSWD_BASE\",\"ocs/PSWD_BASE\",\"$MYSQLPASSWD/" /usr/share/ocsinventory-reports/ocsreports/dbconfig.inc.php
+
+#This file doesn't seem to exist in version 2.1
+#sed -i "s/OCS_DB_PWD ocs/OCS_DB_PWD $MYSQLPASSWD/" /etc/ocsinventory/ocsinventory.conf
 
 ### generate SSL cert for use w/ package deployment
 a2ensite default-ssl
