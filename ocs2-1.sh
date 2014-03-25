@@ -23,8 +23,7 @@ cpan -i XML::Entities
 ### Get and Install OCS Server 2.1 (accept all default values)
 wget https://launchpad.net/ocsinventory-server/stable-2.1/2.1/+download/OCSNG_UNIX_SERVER-2.1.tar.gz
 tar xvzf OCSNG_UNIX_SERVER-2.1.tar.gz
-cd OCSNG_UNIX_SERVER-2.1
-./setup.sh
+./OCSNG_UNIX_SERVER-2.1/setup.sh
 
 
 ### set reasonable limits
