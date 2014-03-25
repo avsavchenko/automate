@@ -47,10 +47,8 @@ read MYSQLPASSWD
 echo "Enter root password for mysql."
 mysql -h localhost -u root -p mysql -e "SET PASSWORD FOR 'ocs'@'localhost' = PASSWORD('$MYSQLPASSWD');"
 sed -i "s/PSWD_BASE\",\"ocs/PSWD_BASE\",\"$MYSQLPASSWD/" /usr/share/ocsinventory-reports/ocsreports/dbconfig.inc.php
+sed -i "s/OCS_DB_PWD ocs/OCS_DB_PWD $MYSQLPASSWD/" /etc/apache2/conf.d/z-ocsinventory-server.conf
 service mysql restart
-
-#This file doesn't seem to exist in version 2.1
-#sed -i "s/OCS_DB_PWD ocs/OCS_DB_PWD $MYSQLPASSWD/" /etc/ocsinventory/ocsinventory.conf
 
 ### generate SSL cert for use w/ package deployment
 a2ensite default-ssl
